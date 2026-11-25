@@ -27,8 +27,22 @@ end FSM_Slave_SPI;
 
 architecture Behavioral of FSM_Slave_SPI is
 
-signal sv_state: std_logic_vector (3 downto 0) := "0000";
-signal sv_next_state: std_logic_vector (3 downto 0);
+type t_state is (
+        ST_RESET,
+        ST_WAIT_FALL_CMD,
+        ST_SAMPLE_CMD,
+        ST_RST_CNT,
+        ST_WAIT_FALL_DATA,
+        ST_SAMPLE_DATA,
+        ST_WRITE_REG,
+        ST_READ_REG,
+        ST_SAMPLE_READ,
+        ST_WAIT_RISE_DATA,
+        ST_TRANSMIT_DATA
+);
+
+signal sv_state: t_state := ST_RESET;
+signal sv_next_state: t_state;
 
 
 
@@ -38,7 +52,7 @@ STATE_UPDATE: process (FSM_i_CLK)
 begin
     if rising_edge(FSM_i_CLK) then
         if FSM_i_RST = '1' then
-            sv_state <= (others => '0');
+            sv_state <= ST_RESET;
         else
             sv_state <= sv_next_state;
         end if;
@@ -59,115 +73,113 @@ begin
 	 FSM_o_SEL2 		<= ( others => '0' );
     FSM_o_OE 			<= '0';
 	 
-	 if FSM_i_nSS = '1' and sv_state /= "0110" then -- Controllo del nSS, per evitare problemi durante lo stato di scrittura lo ignoro
-		  sv_next_state <= "0000";
+	 if FSM_i_nSS = '1' and sv_state /= ST_WRITE_REG then -- Controllo del nSS, per evitare problemi durante lo stato di scrittura lo ignoro
+		  sv_next_state <= ST_RESET;
 	 else
 		 case sv_state is
 
-			  when "0000" =>  -- Reset FSM
+			  when ST_RESET =>  -- Reset FSM
 
-					sv_next_state <= "0001";
+					sv_next_state <= ST_WAIT_FALL_CMD;
 					
-			  when "0001" =>  -- Idle per il falling edge
+			  when ST_WAIT_FALL_CMD =>  -- Idle per il falling edge
 					
 					FSM_o_CNT_CTRL <= "10";
 
 					if FSM_i_FALL = '1' then
-						 sv_next_state <= "0010";
+						 sv_next_state <= ST_SAMPLE_CMD;
 					else
-						 sv_next_state <= "0001";
+						 sv_next_state <= ST_WAIT_FALL_CMD;
 					end if;
 
-			  when "0010" =>  -- Campionamento dato MOSI nello shift register
+			  when ST_SAMPLE_CMD =>  -- Campionamento dato MOSI nello shift register
 
 					FSM_o_CNT_CTRL <= "10";
 					FSM_o_SEL1 <= '1';
 					
 					if FSM_i_HIT = '1' and FSM_i_RW_COMAND = '0' then     
-						 sv_next_state <= "0011"; 
+						 sv_next_state <= ST_RST_CNT; 
 					elsif FSM_i_HIT = '1' and FSM_i_RW_COMAND = '1' then
-						 sv_next_state <= "0111"; 
+						 sv_next_state <= ST_READ_REG; 
 					else
-						 sv_next_state <= "0001";
+						 sv_next_state <= ST_WAIT_FALL_CMD;
 					end if;
 
-			  when "0011" =>  -- Reset del Counter 
+			  when ST_RST_CNT =>  -- Reset del Counter 
 					
 					FSM_o_CNT_CTRL <= "00";
 
-					sv_next_state <= "0100";
+					sv_next_state <= ST_WAIT_FALL_DATA;
 
-			  when "0100" =>  -- Idle per il falling edge
+			  when ST_WAIT_FALL_DATA =>  -- Idle per il falling edge
 					
 					FSM_o_CNT_CTRL <= "10";
 
 					if FSM_i_FALL = '1' then
-						 sv_next_state <= "0101";
+						 sv_next_state <= ST_SAMPLE_DATA;
 					else
-						 sv_next_state <= "0100";
+						 sv_next_state <= ST_WAIT_FALL_DATA;
 					end if;
 
 
-			  when "0101" =>  -- Campionamento dato MOSI nello shift register
+			  when ST_SAMPLE_DATA =>  -- Campionamento dato MOSI nello shift register
 
 					FSM_o_CNT_CTRL <= "10";
 					FSM_o_SEL2 <= "01";
 					
 					if FSM_i_HIT = '1' then     
-						 sv_next_state <= "0110"; 
+						 sv_next_state <= ST_WRITE_REG; 
 					else
-						 sv_next_state <= "0100";
+						 sv_next_state <= ST_WAIT_FALL_DATA;
 					end if;
 
-			  when "0110" =>  -- Scrittura nel registro comunicante con la Slave SPI
+			  when ST_WRITE_REG =>  -- Scrittura nel registro comunicante con la Slave SPI
 
 					FSM_o_WR <= '1';
 
-					sv_next_state <= "0000";
+					sv_next_state <= ST_RESET;
 
-			  when "0111" =>  -- Lettura dal registro comunicante con la Slave SPI
+			  when ST_READ_REG =>  -- Lettura dal registro comunicante con la Slave SPI
 
 					FSM_o_RD <= '1';
 			  
-					sv_next_state <= "1000";
+					sv_next_state <= ST_SAMPLE_READ;
 
-			  when "1000" =>  -- Campionamento del dato proveniente dal registro nello shift register
+			  when ST_SAMPLE_READ =>  -- Campionamento del dato proveniente dal registro nello shift register
 
 					FSM_o_SEL2 <= "11";
 					
-					sv_next_state <= "1001";
+					sv_next_state <= ST_WAIT_RISE_DATA;
 
-			  when "1001" =>  -- Idle per il rising edge
+			  when ST_WAIT_RISE_DATA =>  -- Idle per il rising edge
 
 					FSM_o_CNT_CTRL <= "11";
 					FSM_o_OE <= '1';
 
 					if FSM_i_RISE = '1' then
-						 sv_next_state <= "1010";
+						 sv_next_state <= ST_TRANSMIT_DATA;
 					else
-						 sv_next_state <= "1001";
+						 sv_next_state <= ST_WAIT_RISE_DATA;
 					end if;
 
-			  when "1010" =>  -- Trasmissione in uscita su MISO
+			  when ST_TRANSMIT_DATA =>  -- Trasmissione in uscita su MISO
 
 					FSM_o_CNT_CTRL <= "11";
 					FSM_o_SEL2 <= "01";
 					FSM_o_OE <= '1';
 							  
 					if FSM_i_HIT = '1' then
-						 sv_next_state <= "0000";
+						 sv_next_state <= ST_RESET;
 					else
-						 sv_next_state <= "1001";
+						 sv_next_state <= ST_WAIT_RISE_DATA;
 					end if;
 
 			  when others =>  -- Stato di default sicuro
 			  
-					sv_next_state <= "0000"; 
+					sv_next_state <= ST_RESET; 
 
 		 end case;
 	 end if;
 end process;
 
 end Behavioral;
-
--- Possibili miglioramenti utilizzare un type enumerativo invece di std_logic_vector: Dichiarare gli stati con nomi leggibili (es. type t_state is (IDLE, WAIT_FALL, SAMPLE_CMD, ...);) invece di "0000", "0001"
