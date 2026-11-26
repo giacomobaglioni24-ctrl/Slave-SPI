@@ -97,10 +97,8 @@ begin
 					FSM_o_CNT_CTRL <= "10";
 					FSM_o_SEL1 <= '1';
 					
-					if FSM_i_HIT = '1' and FSM_i_RW_COMAND = '0' then     
+					if FSM_i_HIT = '1' then     
 						 sv_next_state <= ST_RST_CNT; 
-					elsif FSM_i_HIT = '1' and FSM_i_RW_COMAND = '1' then
-						 sv_next_state <= ST_READ_REG; 
 					else
 						 sv_next_state <= ST_WAIT_FALL_CMD;
 					end if;
@@ -109,7 +107,13 @@ begin
 					
 					FSM_o_CNT_CTRL <= "00";
 
-					sv_next_state <= ST_WAIT_FALL_DATA;
+					if FSM_i_RW_COMAND = '0' then     
+						 sv_next_state <= ST_WAIT_FALL_DATA; 
+					elsif FSM_i_RW_COMAND = '1' then
+						 sv_next_state <= ST_READ_REG; 
+					else
+						 sv_next_state <= ST_RESET;
+					end if;
 
 			  when ST_WAIT_FALL_DATA =>  -- Idle per il falling edge
 					
