@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity COUNTER_Slave_SPI is
+entity Counter_Slave_SPI is
     port (
         COUNTER_i_CLK_FPGA  : in std_logic;
         COUNTER_i_RST      : in std_logic;
@@ -14,7 +14,7 @@ entity COUNTER_Slave_SPI is
     );
 end entity;
 
-architecture behavior of COUNTER_Slave_SPI is
+architecture behavior of Counter_Slave_SPI is
 
 signal cnt : unsigned(4 downto 0) := (others => '0');
 
@@ -24,7 +24,7 @@ begin
     begin
         if COUNTER_i_RST = '1' then
             cnt <= (others => '0');
-        elsif rising_edge(COUNTER_i_CLK_FPGA) or falling_edge(COUNTER_i_CLK_FPGA) then
+        elsif rising_edge(COUNTER_i_CLK_FPGA) then
             case COUNTER_i_CTRL is
                 when "00" => -- Reset
                     cnt <= (others => '0');

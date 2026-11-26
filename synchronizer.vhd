@@ -1,7 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity SYNCHRONIZER_Slave_SPI is
+entity Synchronizer_Slave_SPI is
     port (
         SYNCHRONIZER_i_CLK  : in std_logic;
         SYNCHRONIZER_i_CLK_FPGA  : in std_logic;
@@ -12,7 +12,7 @@ entity SYNCHRONIZER_Slave_SPI is
     );
 end entity;
 
-architecture behavior of SYNCHRONIZER_Slave_SPI is
+architecture behavior of Synchronizer_Slave_SPI is
     
 TYPE State_type IS (S0, S1, S2, S3);
 SIGNAL st_state, st_next_state : State_type;

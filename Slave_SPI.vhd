@@ -30,32 +30,58 @@ end Slave_SPI;
 
 architecture Behavioral of Slave_SPI is
 
--- Sincronizzatore
-component KeyExpansionTop
+-- Datapath
+component Datapath_Slave_SPI
 Port (
-
+    MOSI, CLK_FPGA, OUT_EN, SEL1, RESET: IN STD_LOGIC;
+    MISO, RW: OUT STD_LOGIC;
+    SEL2: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+    ADDR: OUT STD_LOGIC_VECTOR(0 TO 14);
+    DIN: OUT STD_LOGIC_VECTOR(0 TO 15);
+    DOUT: IN STD_LOGIC_VECTOR(0 TO 15)
 );
 end component;
 
 -- Contatore
-component Counter
+component Counter_Slave_SPI
 Port (
-
+    COUNTER_i_CLK_FPGA  : in std_logic;
+    COUNTER_i_RST      : in std_logic;
+    COUNTER_i_RISE : in std_logic;
+    COUNTER_i_FALL : in std_logic;
+    COUNTER_i_CTRL : in std_logic_vector(1 downto 0);
+    COUNTER_o_HIT : out std_logic
 );
 end component;
 
 -- FSM
-component AESEngine
+component FSM_Slave_SPI
 Port (
-
+    FSM_i_CLK: IN std_logic;
+    FSM_i_RST: IN std_logic;
+    FSM_i_nSS: 	IN std_logic;
+    FSM_i_HIT: 	IN std_logic;
+    FSM_i_FALL: IN std_logic;
+    FSM_i_RISE: 	IN std_logic;
+    FSM_i_RW_COMAND: 	IN std_logic;
+    FSM_o_RD: 			OUT std_logic;
+    FSM_o_WR: 			OUT std_logic;
+    FSM_o_CNT_CTRL: 	OUT std_logic_vector ( 1 downto 0 );
+    FSM_o_SEL1: 		OUT std_logic;
+    FSM_o_SEL2: 		OUT std_logic_vector ( 1 downto 0 );
+    FSM_o_OE: 			OUT std_logic
 );
 end component;
 
 
--- Datapath
-component AESEngine
+-- Sincronizzatore
+component Synchronizer_Slave_SPI
 Port (
-
+    SYNCHRONIZER_i_CLK  : in std_logic;
+    SYNCHRONIZER_i_CLK_FPGA  : in std_logic;
+    SYNCHRONIZER_i_RST  : in std_logic;
+    SYNCHRONIZER_O_RISE : out std_logic;
+    SYNCHRONIZER_O_FALL : out std_logic
 );
 end component;
 
@@ -76,6 +102,7 @@ signal sv_oe			: std_logic;
 
 -- Datapath
 signal sv_rw		: std_logic;
+signal sv_reset		: std_logic;
 
 
 
@@ -83,68 +110,61 @@ signal sv_rw		: std_logic;
 begin
 
 -- Per rendere la logica di reset low-active   
-sv_reset <= not rst_n;
+sv_reset <= not RST;
 
 -- Key Expansion
-KEYEXPANSION_Inst : KeyExpansionTop
+Datapath_Inst : Datapath_Slave_SPI
 port map (
-    KEYEXPASIONTOP_i_CLK       => clk,
-    KEYEXPASIONTOP_i_RST       => sv_reset,
-    KEYEXPASIONTOP_i_KEYNUMBER => sv_keynumber,
-    KEYEXPASIONTOP_o_READY     => sv_key_ready,
-    KEYEXPASIONTOP_o_KEY       => sv_key
+    MOSI		=> MOSI,
+    CLK_FPGA	=> CLK,
+    OUT_EN		=> sv_oe,
+    SEL1		=> sv_sel1,
+    RESET		=> sv_reset,
+    MISO		=> MISO,
+    RW			=> sv_rw,
+    SEL2		=> sv_sel2,
+    ADDR		=> ADDR,
+    DIN			=> DIN,
+    DOUT		=> DOUT
 );
 
 -- Counter
-COUNTER_Inst : Counter
+Counter_Inst : Counter_Slave_SPI
 port map (
-    COUNTER_i_CLK    => clk,
-    COUNTER_i_RST    => sv_reset,
-    COUNTER_i_INC    => sv_counter_inc,
-    COUNTER_o_OUTPUT => sv_counter_out
+    COUNTER_i_CLK_FPGA  => CLK,
+    COUNTER_i_RST      => RST,
+    COUNTER_i_RISE => sv_rise,
+    COUNTER_i_FALL => sv_fall,
+    COUNTER_i_CTRL => sv_cnt_ctrl,
+    COUNTER_o_HIT => sv_hit
 );
 
--- AES Engine
-AESENGINE_Inst : AESEngine
+-- Sincronizer
+Synchronizer_Inst : Synchronizer_Slave_SPI
 port map (
-    AESENGINE_i_INPUT  => sv_aes_input,
-    AESENGINE_i_KEY    => sv_key, 
-    AESENGINE_i_BLOCK  => sv_fsm_block,
-    AESENGINE_o_OUTPUT => sv_aes_output
+    SYNCHRONIZER_i_CLK  => SCK,
+    SYNCHRONIZER_i_CLK_FPGA  => CLK,
+    SYNCHRONIZER_i_RST  => RST,
+    SYNCHRONIZER_O_RISE => sv_rise,
+    SYNCHRONIZER_O_FALL => sv_fall
 );
 
--- AES FSM
-AESFSM_Inst : AESFSM_Decrypter
+-- FSM
+FSM_Inst : FSM_Slave_SPI
 port map (
-    AESFSM_i_CLK         => clk,
-    AESFSM_i_RST         => sv_reset,
-    AESFSM_i_KEYREADY    => sv_key_ready,
-    AESFSM_o_COUNTERINC  => sv_counter_inc,
-    AESFSM_o_KEYNUMBER   => sv_keynumber,
-    AESFSM_o_BLOCK       => sv_fsm_block,
-    AESFSM_o_LOADNONCE   => sv_fsm_loadnonce,
-    AESFSM_o_LOADINPUT   => sv_fsm_loadinput,
-    AESFSM_o_LOADOUTPUT  => sv_fsm_loadoutput,
-    s_axis_tready        => s_axis_tready,
-    s_axis_tvalid        => s_axis_tvalid,
-    s_axis_tlast         => s_axis_tlast,
-    m_axis_tready        => m_axis_tready,
-    m_axis_tvalid        => m_axis_tvalid,
-    m_axis_tlast         => m_axis_tlast
-);
-
--- Input Big-Little Endian Converter
-INPUT_CONV_Inst: Big_Little_Indian_Converter
-port map (
-    BIGLITTLEINDIANCONVERTER_i_INPUT  => s_axis_tdata,
-    BIGLITTLEINDIANCONVERTER_o_OUTPUT => sv_s_axis_tdata_conv
-);
-
--- Output Big-Little Endian Converter
-OUTPUT_CONV_Inst: Big_Little_Indian_Converter
-port map (
-    BIGLITTLEINDIANCONVERTER_i_INPUT  => sv_m_axis_tdata,
-    BIGLITTLEINDIANCONVERTER_o_OUTPUT => sv_m_axis_tdata_conv
+    FSM_i_CLK => CLK,
+    FSM_i_RST => RST,
+    FSM_i_nSS => nSS,
+    FSM_i_HIT => sv_hit,
+    FSM_i_FALL => sv_fall,
+    FSM_i_RISE => sv_rise,
+    FSM_i_RW_COMAND => sv_rw,
+    FSM_o_RD => RD,
+    FSM_o_WR => WR,
+    FSM_o_CNT_CTRL => sv_cnt_ctrl,
+    FSM_o_SEL1 => sv_sel1,
+    FSM_o_SEL2 => sv_sel2,
+    FSM_o_OE => sv_oe
 );
 
 end Behavioral;
