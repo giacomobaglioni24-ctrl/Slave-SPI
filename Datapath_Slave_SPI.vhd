@@ -5,10 +5,10 @@ ENTITY Datapath_Slave_SPI IS
 	PORT (
 		MOSI, CLK_FPGA, OUT_EN, SEL1, RESET: IN STD_LOGIC;
 		MISO, RW: OUT STD_LOGIC;
-		SEL2: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-		ADDR: OUT STD_LOGIC_VECTOR(0 TO 14);
-		DIN: OUT STD_LOGIC_VECTOR(0 TO 15);
-		DOUT: IN STD_LOGIC_VECTOR(0 TO 15)
+		SEL2: IN STD_LOGIC_VECTOR(1 downto 0);
+		ADDR: OUT STD_LOGIC_VECTOR(14 downto 0);
+		DIN: OUT STD_LOGIC_VECTOR(15 downto 0);
+		DOUT: IN STD_LOGIC_VECTOR(15 downto 0)
 	);
 END Datapath_Slave_SPI;
 
@@ -18,7 +18,7 @@ ARCHITECTURE Behavior OF Datapath_Slave_SPI IS
 	COMPONENT shift_reg1 IS
 		PORT (
 			MOSI, Shift, Clock, Resetn: IN STD_LOGIC; -- Shift segnale di selezione del mux a 2 vie
-			Q: OUT STD_LOGIC_VECTOR(0 TO 14); -- uscita dei bit di indirizzo
+			Q: OUT STD_LOGIC_VECTOR(14 downto 0); -- uscita dei bit di indirizzo
 			RW: OUT STD_LOGIC -- uscita del segnale RW
 		);
 	END COMPONENT;
@@ -26,10 +26,10 @@ ARCHITECTURE Behavior OF Datapath_Slave_SPI IS
 	COMPONENT shift_reg2 IS
 		PORT (
 			MOSI, Clock, Resetn: IN STD_LOGIC; 
-			Shift: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-			DOUT: IN STD_LOGIC_VECTOR(0 TO 15);
+			Shift: IN STD_LOGIC_VECTOR(1 downto 0);
+			DOUT: IN STD_LOGIC_VECTOR(15 downto 0);
 			MISO: OUT STD_LOGIC;
-			Q: OUT STD_LOGIC_VECTOR(0 TO 15) -- uscita dei bit di dato
+			Q: OUT STD_LOGIC_VECTOR(15 downto 0) -- uscita dei bit di dato
 		);
 	END COMPONENT;
 	-- buffer tri-state

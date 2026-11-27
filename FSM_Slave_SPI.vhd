@@ -37,6 +37,7 @@ type t_state is (
         ST_WRITE_REG,
         ST_READ_REG,
         ST_SAMPLE_READ,
+		  ST_DUMMY_WAIT_RISE_DATA,
         ST_WAIT_RISE_DATA,
         ST_TRANSMIT_DATA
 );
@@ -153,8 +154,16 @@ begin
 
 					FSM_o_SEL2 <= "11";
 					
-					sv_next_state <= ST_WAIT_RISE_DATA;
+					sv_next_state <= ST_DUMMY_WAIT_RISE_DATA;
+					
+			  when ST_DUMMY_WAIT_RISE_DATA => -- Idle dummy per far si che il dato MISO non esca con un colpo di anticipo
 
+					if FSM_i_RISE = '1' then
+						 sv_next_state <= ST_WAIT_RISE_DATA;
+					else
+						 sv_next_state <= ST_DUMMY_WAIT_RISE_DATA;
+					end if;
+			  
 			  when ST_WAIT_RISE_DATA =>  -- Idle per il rising edge
 
 					FSM_o_CNT_CTRL <= "11";

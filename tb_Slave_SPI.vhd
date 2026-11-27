@@ -144,7 +144,7 @@ begin
         end procedure;
 
         variable v_received : std_logic_vector(15 downto 0);
-        constant C_ADDR_TEST : std_logic_vector(14 downto 0) := "000000000000101"; -- Indirizzo 5
+        constant C_ADDR_TEST : std_logic_vector(14 downto 0) := "000000000001111"; -- Indirizzo 5
         constant C_DATA_WR   : std_logic_vector(15 downto 0) := x"CAFE";
 
     begin

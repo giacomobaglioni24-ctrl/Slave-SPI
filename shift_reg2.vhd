@@ -4,10 +4,10 @@ USE ieee.std_logic_1164.all;
 ENTITY shift_reg2 IS
 	PORT (
 		MOSI, Clock, Resetn: IN STD_LOGIC; 
-		Shift: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-		DOUT: IN STD_LOGIC_VECTOR(0 TO 15);
+		Shift: IN STD_LOGIC_VECTOR(1 downto 0);
+		DOUT: IN STD_LOGIC_VECTOR(15 downto 0);
 		MISO: OUT STD_LOGIC;
-		Q: OUT STD_LOGIC_VECTOR(0 TO 15) -- uscita dei bit di dato
+		Q: OUT STD_LOGIC_VECTOR(15 downto 0) -- uscita dei bit di dato
 	);
 END shift_reg2;
 
@@ -17,7 +17,7 @@ ARCHITECTURE Behavior OF shift_reg2 IS
 	COMPONENT mux4 IS
 		PORT (
 			input1, input2, input3, input4: IN STD_LOGIC;
-			sel: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			sel: IN STD_LOGIC_VECTOR(1 downto 0);
 			output: OUT STD_LOGIC
 		);
 	END COMPONENT;
@@ -30,9 +30,9 @@ ARCHITECTURE Behavior OF shift_reg2 IS
 	END COMPONENT;
 
 	-- d_mux: collega l'uscita del mux all'ingresso del FF
-	SIGNAL d_mux: STD_LOGIC_VECTOR(0 TO 15);
+	SIGNAL d_mux: STD_LOGIC_VECTOR(15 downto 0);
 	-- shift_chain: collega l'uscita del FF all'ingresso 0 del mux
-	SIGNAL shift_chain: STD_LOGIC_VECTOR(0 TO 16);
+	SIGNAL shift_chain: STD_LOGIC_VECTOR(16 downto 0);
 
 BEGIN
 
@@ -59,7 +59,7 @@ BEGIN
 	END GENERATE;
 
 	-- Uscita parallela collegata ai 16 flip-flop
-	Q <= shift_chain(1 TO 16);
+	Q <= shift_chain(16 downto 1);
 	MISO <= shift_chain(16);
 
 END Behavior;

@@ -1,4 +1,3 @@
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -77,7 +76,9 @@ architecture behavioural of user is
 	end component;
 
 	-- Segnali di interconnessione SPI <-> Banco Registri
-	signal rst_n    : std_logic;
+	signal pll_areset : std_logic;
+	signal rst_meta   : std_logic := '1';
+	signal rst_spi    : std_logic := '1';
 	signal miso_sig : std_logic;
 	signal rd_sig   : std_logic;
 	signal wr_sig   : std_logic;
@@ -95,18 +96,20 @@ begin
 --* Main clock PLL
 --**********************************************************************************
 
+	pll_areset <= not reset;
+
 	myAltPll_inst : myAltPll PORT MAP (
-		areset	 => reset,
-		inclk0	 => mainClk,
-		c0	 => clk,
-		locked	 => pllLock
+		 areset => pll_areset,
+		 inclk0 => mainClk,
+		 c0     => clk,
+		 locked => pllLock
 	);
 
 --**********************************************************************************
 --* LEDs
 --**********************************************************************************
 
-	leds <= switches( 3 downto 0 );
+	-- leds <= switches( 3 downto 0 );
 	
 --**********************************************************************************
 --* 		lsasBus	: inout std_logic_vector( 31 downto 0 )
@@ -133,34 +136,52 @@ begin
 	-- IO14: MISO --> lsasBus14 --> lsasBusOut(14)
 	-- IO15: MOSI --> lsasBus15 --> lsasBusIn(15)
 		
-	-- Reset attivo basso sincronizzato con il lock della PLL (se RST è attivo alto usa: reset or (not pllLock))
-	rst_n <= (not reset) and pllLock;
+	-- Diagnostica LED (attivi alti):
+	-- leds(0) [D104]: ACCESO = PLL agganciata (clock 10 MHz attivo)
+	-- leds(1) [D103]: SPENTO = Slave_SPI uscito dal reset e pronto
+	-- leds(2) [D102]: bit 0 del registro 0x00
+	-- leds(3) [D101]: bit 1 del registro 0x00
+	leds(0) <= pllLock;
+	leds(1) <= rst_spi;
+	leds(2) <= reg_bank(0)(0);
+	leds(3) <= reg_bank(0)(1);
 
+	-- Sincronizzatore di reset (2 FF): attivo alto su rst_spi finché reset='0' oppure pllLock='0'
+	reset_sync_proc : process(clk, reset, pllLock)
+	begin
+		 if (reset = '0') or (pllLock = '0') then
+			  rst_meta <= '1';
+			  rst_spi  <= '1';
+		 elsif rising_edge(clk) then
+			  rst_meta <= '0';
+			  rst_spi  <= rst_meta;
+		 end if;
+	end process;
+	
 	-- Controllo tri-state su IO14 (MISO): abilitato solo quando nSS (IO12) = '0'
 	lsasBusOut(14) <= miso_sig;
 	lsasBusEn(14)  <= not lsasBusIn(12);
 
-	-- Istanziazione Slave_SPI
 	Slave_SPI_inst : Slave_SPI
-		port map
-		(
-			-- Clock and Reset
-			CLK  => clk,
-			RST  => rst_n,
+    port map
+    (
+        -- Clock and Reset
+        CLK  => clk,
+        RST  => rst_spi,
 
-			-- SPI Interface
-			nSS  => lsasBusIn(12),
-			SCK  => lsasBusIn(13),
-			MOSI => lsasBusIn(15),
-			MISO => miso_sig,
+        -- SPI Interface
+        nSS  => lsasBusIn(12),
+        SCK  => lsasBusIn(13),
+        MOSI => lsasBusIn(15),
+        MISO => miso_sig,
 
-			-- FPGA Interface
-			RD   => rd_sig,
-			WR   => wr_sig,
-			ADDR => addr_bus,
-			DIN  => din_bus,
-			DOUT => dout_bus
-		);
+        -- FPGA Interface
+        RD   => rd_sig,
+        WR   => wr_sig,
+        ADDR => addr_bus,
+        DIN  => din_bus,
+        DOUT => dout_bus
+    );
 
 	-- Banco registri sincrono (scrittura su WR, lettura su RD con 1 ciclo di latenza su DOUT)
 	reg_bank_proc : process(clk)

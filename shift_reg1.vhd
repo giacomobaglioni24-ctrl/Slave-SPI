@@ -4,7 +4,7 @@ USE ieee.std_logic_1164.all;
 ENTITY shift_reg1 IS
 	PORT (
 		MOSI, Shift, Clock, Resetn: IN STD_LOGIC; -- Shift segnale di selezione del mux a 2 vie
-		Q: OUT STD_LOGIC_VECTOR(0 TO 14); -- uscita dei bit di indirizzo
+		Q: OUT STD_LOGIC_VECTOR(14 downto 0); -- uscita dei bit di indirizzo
 		RW: OUT STD_LOGIC -- uscita del segnale RW
 	);
 END shift_reg1;
@@ -27,9 +27,9 @@ ARCHITECTURE Behavior OF shift_reg1 IS
 	END COMPONENT;
 
 	-- d_mux: collega l'uscita del mux all'ingresso del FF
-	SIGNAL d_mux: STD_LOGIC_VECTOR(0 TO 15);
+	SIGNAL d_mux: STD_LOGIC_VECTOR(15 downto 0);
 	-- shift_chain: collega l'uscita del FF all'ingresso 0 del mux
-	SIGNAL shift_chain: STD_LOGIC_VECTOR(0 TO 16);
+	SIGNAL shift_chain: STD_LOGIC_VECTOR(16 downto 0);
 
 BEGIN
 
@@ -55,6 +55,6 @@ BEGIN
 
 	-- Uscita parallela collegata ai 16 flip-flop
 	RW <= shift_chain(1);
-	Q <= shift_chain(2 TO 16);
+	Q <= shift_chain(16 downto 2);
 
 END Behavior;
